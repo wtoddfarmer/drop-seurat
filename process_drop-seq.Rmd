@@ -1,0 +1,228 @@
+---
+title: "split_drop"
+author: "Todd Farmer"
+date: "09/04/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# This document show how the Drop-Seq dataset used in the Murai lab is contructed from the provided data.
+```{r}
+library(R.matlab)
+library(Seurat)
+library(dplyr)
+library(DropSeq.util)
+library(gsubfn)
+library(sctransform)
+library(future)
+# plan("multiprocess", workers = 4)
+options(future.globals.maxSize = 10000 * 1024^2)
+source("DropSeuratFunctions.R")
+```
+# The Data
+The data is split in a digital gene expression (DGE) matrix for each brain region, an annotation file for each region, and a annotation file that describes all of the cell types annotated in the publication.
+
+## DGE
+The expresssion matrix is a sparse matrix that consists of cells in columns and genes in rows
+Here is small subset of a DGE:
+## Outcomes
+
+## Annotation
+
+
+## Set the directories to use
+```{r}
+
+path <- "/Volumes/one/DATA/drop-seq/raw/"
+
+files <- read.csv("/Volumes/one/DATA/drop-seq/raw/dropSeq_files.csv")
+```
+
+## Download data
+DGE matrix for each region
+as well as metadata(subcluster assignment etc)
+```{r download}
+
+```
+
+
+## Construct seurat object for each brain region
+
+```{r extractData}
+path <- "raw/"
+idents <- readRDS(paste0(path, "annotation.BrainCellAtlas_Saunders_version_2018.04.01.RDS"))
+
+files <- read.csv(paste0(path, "dropSeq_files.csv"), header = FALSE)
+for (row in 1:nrow(files)) {
+    rawDGE <- paste0(path, as.character(files[row, 1]))
+    RDS <- paste0(path, as.character(files[row, 2]))
+    prefix <- as.character(files[row, 3])
+    print(paste0("Contructing ", prefix, " using ", rawDGE, " and ", RDS))
+    SO <- extractDGE(rawDGE, RDS, idents, prefix)
+    print(SO)
+    }
+    
+
+```
+
+# Calculate each brain region
+```{r}
+
+# loop over files in folder
+SOs <- list.files('annotated/', pattern='*\\_annotated.RDS', recursive=FALSE, full.names=TRUE)
+
+for (file in SOs){
+  SO <- readRDS(file)
+  print(file)
+  print(SO)
+  SO <- dropPass(SO)
+  SO <- calcDrop(SO)
+  message("Writing to disk...")
+  saveRDS(SO, paste0("TISSUE/", gsub("_annotated.RDS","", basename(file)), ".RDS"))
+}
+```
+
+
+## Generate an Seurat objec that contains all cells.
+```{r combineSOs}
+annotated_dir <- "annotated/"
+SOs <- list.files(path = "annotated/")
+AllDrop <- readRDS(paste0(annotated_dir, SOs[1]))
+
+for (SO in 2:length((SOs))){
+  print(SOs[SO])
+  SO <- readRDS(paste0(annotated_dir, SOs[SO]))
+  AllDrop <- Seurat:::merge.Seurat(x = AllDrop, y = SO)
+}
+saveRDS(AllDrop, file="annotated/ALL_annotated.RDS")
+AllDrop
+```
+
+
+
+
+## Split by Class
+
+
+```{r}
+# ALL <- readRDS("ALL_annotated.RDS")
+# split <- SplitObject(ALL, split.by = "class")
+for (subset in names(split)){
+  message(paste0("Saving ", subset, " subset..."))
+  print(split[[subset]])
+  saveRDS(split[[subset]], file = paste0("class_annotated/",subset,".RDS"))
+}
+```
+
+# Calculate each cell class   
+  
+Note that the Neuron and Unknown object were skipped becuase of their sizes
+```{r}
+
+# loop over files in folder
+# 
+SOs <- list.files('class_annotated', pattern='*\\.RDS', recursive=FALSE, full.names=TRUE)
+
+for (file in SOs[11:12]){ # use this to run all except neuron and unknown SOs[-c(9, 13)]
+  SO <- readRDS(file)
+  print(file)
+  print(SO)
+  # SO <- dropPass(SO)
+  SO <- calcDrop(SO)
+  message(paste0("Writing ", basename(file), " to disk..."))
+  saveRDS(SO, paste0("CLASS/", basename(file)))
+}
+```
+
+
+
+# ALL PASSED CELLS AS A SINGLE OBJECT
+
+## Split All cells into a only passed object
+```{r}
+
+QCsplit <- SplitObject(ALL, split.by = "reason")
+```
+```{r}
+saveRDS(QCsplit[["passed"]], file = "ALL/ALL.RDS")
+```
+
+
+
+## Calculate the NEURON and UNKNOWN object  
+  
+Note that in order to compute the SCTransform for the NEURON and OBJECT object, the conserve.memory option is set to TRUE. This resulting that only variable genes are returned
+
+```{r}
+NEURON <-readRDS('class_annotated/NEURON.RDS')
+
+```
+
+```{r}
+
+  # NEURON <- dropPass(NEURON)
+  #stopifnot(length(NEURON@meta.data$orig.ident) >100)
+  message("Performing Normalization and Variance Stablization")
+  NEURON <- suppressWarnings(SCTransform(NEURON,
+                                     vars.to.regress = "percent.mito" ,
+                                     verbose = TRUE,
+                                     return.only.var.genes = TRUE,
+                                     conserve.memory = TRUE
+                                      ))
+  
+  message("Running PCA")
+
+  NEURON <- suppressWarnings(RunPCA(NEURON, verbose = FALSE))
+  # write test to extract max number of PCs
+  # set dims 
+  message("Testing Dimensionality")
+  # NEURON <- JackStraw(NEURON, num.replicate = 100)
+  # NEURON <- ScoreJackStraw(NEURON, dims = 1:50)
+  message("Running Dimension Reduction")
+  NEURON <- RunUMAP(NEURON, dims = 1:30, verbose = FALSE)
+  NEURON <- RunTSNE(NEURON, dims = 1:30, verbose = FALSE)
+  # clustering
+  message("Finding Nearest Neighbors")
+  NEURON <- FindNeighbors(NEURON, dims = 1:30, verbose = FALSE)
+  message("Finding Clusters")
+  NEURON <- FindClusters(NEURON, verbose = FALSE)
+  saveRDS(NEURON, "CLASS/NEURON.RDS")
+```
+
+```{r}
+UNKNOWN <-readRDS('class_annotated/UNKNOWN.RDS')
+```
+
+```{r}
+ # UNKNOWN <- dropPass(UNKNOWN)
+  #stopifnot(length(UNKNOWN@meta.data$orig.ident) >100)
+  message("Performing Normalization and Variance Stablization")
+  UNKNOWN <- suppressWarnings(SCTransform(UNKNOWN,
+                                     vars.to.regress = "percent.mito" ,
+                                     verbose = TRUE,
+                                     return.only.var.genes = TRUE,
+                                     conserve.memory = TRUE
+                                      ))
+  
+  message("Running PCA")
+
+  UNKNOWN <- suppressWarnings(RunPCA(UNKNOWN, verbose = FALSE))
+  # write test to extract max number of PCs
+  # set dims 
+  message("Testing Dimensionality")
+  # UNKNOWN <- JackStraw(UNKNOWN, num.replicate = 100)
+  # UNKNOWN <- ScoreJackStraw(UNKNOWN, dims = 1:50)
+  message("Running Dimension Reduction")
+  UNKNOWN <- RunUMAP(UNKNOWN, dims = 1:30, verbose = FALSE)
+  UNKNOWN <- RunTSNE(UNKNOWN, dims = 1:30, verbose = FALSE)
+  # clustering
+  message("Finding Nearest Neighbors")
+  UNKNOWN <- FindNeighbors(UNKNOWN, dims = 1:30, verbose = FALSE)
+  message("Finding Clusters")
+  UNKNOWN <- FindClusters(UNKNOWN, verbose = FALSE)
+  saveRDS(UNKNOWN, "CLASS/UNKNOWN.RDS")
+```
+
+

@@ -1,0 +1,125 @@
+---
+title:  'QC Report for `r basename(file)`' # add file name
+date generated: "14/04/2020" # change date to date created
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(rmarkdown)
+# library(kableExtra)
+```
+
+```{r}
+#file <- "annotated/CB_annotated.RDS"
+#file_calc <- "TISSUE/CB.RDS"
+#SO <- readRDS(file)
+SO <- readRDS(file)
+```
+
+
+# Base Info  
+```{r info, results='asis'}
+
+SO
+```  
+  
+The Seurat object was generated with Seurat `r SO@version`.  
+  
+# Table of Data  
+
+
+```{r}
+SO_table <- SO@meta.data %>% summarize(number_cells = dim(.)[1],
+                                       regions = n_distinct(tissue),
+                                       cell_classes = n_distinct(class),
+                                       cell_types = n_distinct(common_name),
+                                       percent_passed = round(sum(reason == "passed")/dim(.)[1]*100,2))
+paged_table(SO_table)
+```
+
+# Class Data
+
+```{r}
+class_agg <- SO@meta.data %>% group_by(class) %>% count(class) 
+bp <- ggplot(class_agg, aes(x="", y=n, fill=class))+
+geom_bar(width = 1, stat = "identity")
+class_pie <- bp + coord_polar("y", start=0) + theme(legend.position="bottom")
+
+class_pie
+```  
+
+
+
+```{r class_pie}
+paged_table(class_agg)  
+
+```    
+  
+    
+    
+  
+  
+  
+# QC Data  
+
+```{r}
+SO <- SetIdent(SO, value = SO@meta.data$reason)
+VlnPlot(SO, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 3, pt.size = 0.1)
+VlnPlot(SO, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 3, pt.size = 0)
+```
+```{r}
+plot1 <- FeatureScatter(SO, feature1 = "nCount_RNA", feature2 = "percent.mito")
+plot2 <- FeatureScatter(SO, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+```
+
+  
+```{r}
+qc_agg <- SO@meta.data %>% group_by(reason) %>% count(reason) 
+bp <- ggplot(qc_agg, aes(x="", y=n, fill=reason))+
+geom_bar(width = 1, stat = "identity")
+qc_pie <- bp + coord_polar("y", start=0) + theme(legend.position="bottom")
+
+qc_pie
+
+```  
+```{r}
+paged_table(qc_agg)
+```
+
+# Annotated Cell Types  
+  
+
+```{r common}
+name_agg <- SO@meta.data %>% group_by(common_name) %>% count(common_name) 
+paged_table(name_agg)
+```  
+
+# Dimensionality   
+  
+## Principle Component Analysis
+  
+```{r, message=TRUE}
+if ("pca" %in% names(SO@reductions)){
+  print(SO@reductions["pca"])
+  print(ElbowPlot(SO, ndims = as.integer(dim(SO@reductions[["pca"]])[2])))
+  }else{
+    message("PCA has not been calculated for this object")
+    
+  }
+```
+  
+
+
+# Environment
+```{r}
+sessionInfo()
+```
+
