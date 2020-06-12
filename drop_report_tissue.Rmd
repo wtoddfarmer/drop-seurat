@@ -1,0 +1,102 @@
+---
+title:  'Basic Report for `r basename(file)`' # add file name: 
+date generated: "14/04/2020" # change date to date created
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(rmarkdown)
+library(plotly)
+# library(kableExtra)
+```
+
+```{r}
+#file <- "CLASS/MURAL.RDS"
+SO <- readRDS(file)
+```
+
+
+# Base Info  
+```{r info, results='asis'}
+# load object from file
+# print Seurat Object
+SO
+```  
+  
+The Seurat object was generated with Seurat `r SO@version`.  
+  
+# Table of Data  
+
+
+```{r}
+SO_table <- SO@meta.data %>% summarize(number_cells = dim(.)[1],
+                                       regions = n_distinct(tissue),
+                                       cell_classes = n_distinct(class),
+                                       cell_types = n_distinct(common_name),
+                                       percent_passed = round(sum(reason == "passed")/dim(.)[1]*100,2))
+paged_table(SO_table)
+```  
+
+# Class Data
+
+```{r class_plot}
+class_plot <- DimPlot(SO, group.by = "class", pt.size = 0.25, label = TRUE, repel =TRUE) + theme(legend.position = "none")
+class_plot
+```  
+
+
+
+```{r class_table}
+class_agg <- SO@meta.data %>% group_by(class) %>% count(class)
+paged_table(class_agg) 
+
+```    
+
+
+# Annotated Cell Types  
+```{r common_plot}
+name_plot <- DimPlot(SO, group.by = "common_name", pt.size = 0.25, label = TRUE, repel = TRUE, label.size = 2) + theme(legend.position = "none")
+
+name_plot
+```
+
+
+```{r common}
+name_agg <- SO@meta.data %>% group_by(common_name) %>% count(common_name) 
+paged_table(name_agg)
+```
+
+# Calculated Clusters
+```{r cluster_plot}
+DimPlot(SO, group.by = "seurat_clusters", pt.size = 0.25, label = TRUE, repel = TRUE) + theme(legend.position = "none")
+```
+```{r clusters}
+cluster_agg <- SO@meta.data %>% group_by(seurat_clusters) %>% count(seurat_clusters) 
+paged_table(cluster_agg)
+```  
+  
+  
+# Interactive Plot
+Downsampled to 1000 cells.
+```{r}
+subset <- subset(SO, cells = WhichCells(object = SO, downsample = 1000))
+
+sample_plot <- DimPlot(subset, group.by = "class", pt.size = 0.25, label = TRUE ) + theme(legend.position = "none")
+pp <- HoverLocator(plot = sample_plot, information = FetchData(SO, vars = c("common_name", "class")))
+
+pp 
+```
+
+
+# Environment
+```{r}
+sessionInfo()
+```
+
