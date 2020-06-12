@@ -151,7 +151,7 @@ saveRDS(QCsplit[["passed"]], file = "ALL/ALL.RDS")
 
 
 
-## Calculate the NEURON and UNKNOWN object  
+## Calculate the ALL, NEURON and UNKNOWN object  
   
 Note that in order to compute the SCTransform for the NEURON and OBJECT object, the conserve.memory option is set to TRUE. This resulting that only variable genes are returned
 
@@ -225,4 +225,74 @@ UNKNOWN <-readRDS('class_annotated/UNKNOWN.RDS')
   saveRDS(UNKNOWN, "CLASS/UNKNOWN.RDS")
 ```
 
+```{r}
+ALL <-readRDS('ALL/ALL.RDS')
+```
+
+```{r}
+ # ALL <- dropPass(ALL)
+  #stopifnot(length(ALL@meta.data$orig.ident) >100)
+  message("Performing Normalization and Variance Stablization")
+  ALL <- suppressWarnings(SCTransform(ALL,
+                                     vars.to.regress = "percent.mito" ,
+                                     verbose = TRUE,
+                                     return.only.var.genes = TRUE,
+                                     conserve.memory = TRUE
+                                      ))
+  
+  message("Running PCA")
+
+  ALL <- suppressWarnings(RunPCA(ALL, verbose = FALSE))
+  # write test to extract max number of PCs
+  # set dims 
+  message("Testing Dimensionality")
+  # ALL <- JackStraw(ALL, num.replicate = 100)
+  # ALL <- ScoreJackStraw(ALL, dims = 1:50)
+  message("Running Dimension Reduction")
+  ALL <- RunUMAP(ALL, dims = 1:30, verbose = FALSE)
+  ALL <- RunTSNE(ALL, dims = 1:30, verbose = FALSE)
+  # clustering
+  message("Finding Nearest Neighbors")
+  ALL <- FindNeighbors(ALL, dims = 1:30, verbose = FALSE)
+  message("Finding Clusters")
+  ALL <- FindClusters(ALL, verbose = FALSE)
+  saveRDS(ALL, "ALL/ALL_calc.RDS")
+```
+
+# Will replace previous sections for the large SOs
+```{r}
+bigSOs <- c('class_annotated/NEURON.RDS', 'class_annotated/UNKNOWN.RDS', 'ALL/ALL.RDS')
+```
+```{r}
+# TODO: Finish this cell by adding saveRDS to correct place
+for (file in bigSOs){
+  print(file)
+  SO <- readRDS(file)
+  message("Performing Normalization and Variance Stablization")
+  SO <- suppressWarnings(SCTransform(SO,
+                                     vars.to.regress = "percent.mito" ,
+                                     verbose = TRUE,
+                                     return.only.var.genes = TRUE,
+                                     conserve.memory = TRUE
+                                      ))
+  
+  message("Running PCA")
+
+  SO <- suppressWarnings(RunPCA(SO, verbose = FALSE))
+  # write test to extract max number of PCs
+  # set dims 
+  message("Testing Dimensionality")
+  # SO <- JackStraw(SO, num.replicate = 100)
+  # SO <- ScoreJackStraw(SO, dims = 1:50)
+  message("Running Dimension Reduction")
+  SO <- RunUMAP(SO, dims = 1:30, verbose = FALSE)
+  SO <- RunTSNE(SO, dims = 1:30, verbose = FALSE)
+  # clustering
+  message("Finding Nearest Neighbors")
+  SO <- FindNeighbors(SO, dims = 1:30, verbose = FALSE)
+  message("Finding Clusters")
+  SO <- FindClusters(SO, verbose = FALSE)
+  saveRDS(SO, "ALL/ALL_calc.RDS")
+}
+```
 

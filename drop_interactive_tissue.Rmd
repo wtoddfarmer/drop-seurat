@@ -1,0 +1,65 @@
+---
+title:  'Interactive Plot for Each Tissue' # add file name: 
+date generated: "14/04/2020" # change date to date created
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(rmarkdown)
+library(plotly)
+# library(kableExtra)
+```
+
+```{r}
+# file <- "TISSUE/CB.RDS"
+
+```
+
+
+
+
+
+
+
+# Interactive Plots
+Downsampled to 5000 cells. Hover over
+```{r, results='asis'}
+folder <- 'TISSUE'
+l <- htmltools::tagList()
+SOs <- list.files(folder, pattern='*\\.RDS', recursive=FALSE, full.names=TRUE)
+
+for (file in SOs){
+  print(file)
+    SO <- readRDS(file)
+    SO_table <- SO@meta.data %>% summarize(number_cells = dim(.)[1],
+                                           regions = n_distinct(tissue),
+                                           cell_classes = n_distinct(class),
+                                           cell_types = n_distinct(common_name),
+                                           percent_passed = round(sum(reason == "passed")/dim(.)[1]*100,2))
+    name_agg <- SO@meta.data %>% group_by(common_name) %>% count(common_name) 
+
+    subset <- subset(SO, cells = WhichCells(object = SO, downsample = 1000))
+    
+    sample_plot <- DimPlot(subset, group.by = "class", pt.size = 0.25, label = TRUE ) + theme(legend.position = "none", title = basename(file))
+    pp <- HoverLocator(plot = sample_plot, information = FetchData(SO, vars = c("common_name"))) 
+    l[[file]] <- as.widget(pp)
+  rm(SO)
+    paged_table(SO_table)
+    paged_table(name_agg)
+}
+l
+```
+
+
+# Environment
+```{r}
+sessionInfo()
+```
+
