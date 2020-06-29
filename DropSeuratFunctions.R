@@ -79,3 +79,16 @@ calcDrop <- function(SO){
   return(SO)
 }
 
+# function to load downsampled Seurat objects
+loadDownsampleData <- function (file_list){
+  
+  for (file in file_list){
+    print(paste0("loading ", file, "..."))
+    var_name <- strsplit(basename(file), "_downSample")[[1]][1]
+    print(paste0("Assigning as ", var_name))
+    assign(var_name, readRDS(file), envir = .GlobalEnv)
+  }
+  
+}
+
+

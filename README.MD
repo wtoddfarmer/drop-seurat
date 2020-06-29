@@ -14,20 +14,5 @@ Folders:
 
 
 
-TODO:
-
-make main data ALL
-  make downsampled versions of all seurat objects
-
-select level 1 region or class
-
-dropdown reflects l1 choice
-
-select level 2 region, class, or none
-
-dropdown reflects l2 choice
-
-button to create report
-
 
 
