@@ -1,7 +1,7 @@
 # Drop-Seurat
 This repository contains the code used to analyse the Drop-seq data from the McCarrol lab.  
 
-Note: the reports contained here can be viewed by navigating to the coresponding github pages location.  
+Note: the reports contained here are best viewed locally but can be viewed by navigating to the coresponding github pages location.  
 For example to see the report for the the combined object containing all cells go to [https://wtoddfarmer.github.io/drop-seurat/ALL/ALL_calc.html](https://wtoddfarmer.github.io/drop-seurat/ALL/ALL_calc.html)
 
 Becuase of their size, the Seurat objects referred to here can be found elsewhere in the lab.
