@@ -5,7 +5,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      dev = c("png"))
 ```
 
 ```{r}
@@ -19,7 +22,7 @@ library(plotly)
 
 ```{r}
 #file <- "CLASS/MURAL.RDS"
-SO <- readRDS(file)
+SO <- readRDS(paste0("../", file))
 ```
 
 
@@ -95,18 +98,6 @@ cluster_agg <- SO@meta.data %>% group_by(seurat_clusters) %>% count(seurat_clust
 paged_table(cluster_agg)
 ```  
   
-  
-# Interactive Plot
-Downsampled to 5000 cells. Hover over point for details.
-```{r}
-subset <- subset(SO, cells = WhichCells(object = SO, downsample = 5000))
-
-sample_plot <- DimPlot(subset, group.by = "class", pt.size = 0.25, label = TRUE ) + theme(legend.position = "none")
-pp <- HoverLocator(plot = sample_plot, information = FetchData(SO, vars = c("common_name", "tissue")))
-
-pp 
-```
-
 
 # Environment
 ```{r}

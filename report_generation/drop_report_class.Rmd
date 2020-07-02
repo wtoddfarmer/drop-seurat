@@ -19,7 +19,7 @@ library(plotly)
 
 ```{r}
 #file <- "CLASS/MURAL.RDS"
-SO <- readRDS(file)
+SO <- readRDS(paste0("../", file))
 ```
 
 
@@ -81,18 +81,6 @@ DimPlot(SO, group.by = "seurat_clusters", pt.size = 0.25, label = TRUE, repel = 
 cluster_agg <- SO@meta.data %>% group_by(seurat_clusters) %>% count(seurat_clusters) 
 paged_table(cluster_agg)
 ```  
-  
-  
-# Interactive Plot
-Downsampled to 5000 cells.
-```{r}
-subset <- subset(SO, cells = WhichCells(object = SO, downsample = 5000))
-
-sample_plot <- DimPlot(subset, group.by = "tissue", pt.size = 0.25, label = TRUE ) + theme(legend.position = "none")
-pp <- HoverLocator(plot = sample_plot, information = FetchData(SO, vars = c("common_name", "tissue")))
-
-pp 
-```
 
 
 # Environment
