@@ -63,13 +63,21 @@ shinyUI(fluidPage(
                                  tags$head(tags$style("#L1{font-size: 36px; font-weight: 500; line-height: 1.1}")),
                                  plotOutput("L1overview"),
                                  tags$h2("Expression of GOI on L1 UMAP"),
-                                 plotOutput("umapL1")),
+                                 plotOutput("umapL1"),
+                                 tags$h2("Violin of GOI of L1"),
+                                 plotOutput("vlnL1")
+                                 ),
                         tabPanel("Level 2", 
                                  textOutput("L2"),
                                  tags$head(tags$style("#L2{font-size: 36px; font-weight: 500; line-height: 1.1}")),
+                                 br(),
                                  #plotOutput("L2overview"),
-                                 tags$h2("Expression of GOI on L2 UMAP"),
-                                 #plotOutput("umapL1")),
+                                 plotOutput("overviewL2", inline = TRUE),
+                                 br(),
+                                 tags$h2("Expression of GOI on L1 UMAP showing only L2"),
+                                 plotOutput("umapL2", inline = TRUE),
+                                 tags$h2("Expression of GOI in cells of interest"),
+                                 plotOutput("vlnL2"),
                                  )
             )
             

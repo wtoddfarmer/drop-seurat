@@ -9,7 +9,7 @@ source("/Volumes/one/DATA/drop-seq/DropSeuratFunctions.R")
 folder <- "/Volumes/one/DATA/drop-seq/"
 SOs <- list.files(folder, pattern='*\\_downSample.RDS', recursive=TRUE, full.names=TRUE)
 loadDownsampleData(SOs)
-ALL_calc <- readRDS("../ALL/ALL_calc_downSample.RDS")
+#ALL_calc <- readRDS("../ALL/ALL_calc_downSample.RDS")
 
 tissue_list = list("CB", "ENT", "FC", "GP", "HC", "PC", "SN", "STR", "TH")
 class_list = list("ASTROCYTE",
@@ -26,7 +26,8 @@ class_list = list("ASTROCYTE",
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
-  
+  l1 <<- reactive(input$l1)
+  l2 <<- reactive(input$l2)
      # Image of cell classes on UMAP
     output$classUmap <- renderImage({
         filename = "class.png"
@@ -40,12 +41,13 @@ shinyServer(function(input, output) {
     # Level 1 Variable
     output$L1 <- renderText({paste0("Level 1: ", input$l1)})
     
+    
+    # LEVEL 0--------------------------------------------------------------
     # UMAP with Class
     # add if statement for 'none'
     output$classPlot <- renderPlot({
         DimPlot(ALL_calc, group.by = "class", pt.size = 0.25, label = TRUE, repel =TRUE)  + theme(legend.position = "none")
     }, width = 600, height = 400)
-    
     
     # UMAP with Expressiom
     output$umapPlot <- renderPlot({
@@ -61,10 +63,12 @@ shinyServer(function(input, output) {
     output$vlnTissue <- renderPlot({
         VlnPlot(ALL_calc, features = input$GOI, group.by = "tissue" ) + ggtitle(NULL) + theme(legend.position = "none")
     }, width = 600, height = 400) 
+   
     
+    # LEVEL 1--------------------------------------------------------------
     # Level 1 UMAP plot
     # add conditionals for plots
-    # if L2 == none then "common_name' on L1 umap
+    
     output$L1overview <- renderPlot({
         if (input$l1 %in% tissue_list){
                 DimPlot(get(input$l1), group.by = "class", pt.size = 0.25, label = TRUE, repel =TRUE)  + ggtitle(NULL) + theme(legend.position = "none")}
@@ -74,15 +78,75 @@ shinyServer(function(input, output) {
     
     
     output$umapL1 <- renderPlot({
-        #if (){}
         FeaturePlot(get(input$l1), features = input$GOI)  + ggtitle(NULL) + theme(legend.position = "none")
     }, width = 600, height = 400)
    
+    output$vlnL1 <- renderPlot({
+      
+      if (input$l1 %in% tissue_list){
+        VlnPlot(get(input$l1),
+                features = input$GOI, group.by = "class") + ggtitle(NULL) + theme(legend.position = "none")
+      }
+      else  if (input$l1 %in% class_list){
+        VlnPlot(get(input$l1),
+                features = input$GOI, group.by = "tissue" ) + ggtitle(NULL) + theme(legend.position = "none")}
+    }, width = 600, height = 400)
     
-    #Level 2
+    # LEVEL 2--------------------------------------------------------------
     output$L2 <- renderText({paste0("Level 2: ", input$l2)})
     
+    # UMAP of all of the common names for L1 and L2 selections
+    output$overviewL2 <- renderPlot({
+      
+      if (input$l2 %in% tissue_list){
+        DimPlot(subset(x = get(input$l1),
+                       subset = tissue == l2()),
+                group.by = "common_name") +
+          theme(legend.position='bottom', legend.text=element_text(size=8), legend.key.size = unit(0.00, 'cm'))
+      }
+      else  if (input$l2 %in% class_list){
+        DimPlot(subset(x = get(input$l1),
+                       subset = class == l2()), 
+                group.by = "common_name" ) +
+          theme(legend.position='bottom', legend.text=element_text(size=8), legend.key.size = unit(0.00, 'cm'))
+        }
+    }, width = 800, height = 600)
     
+    # UMAP of all of the common names for L1 and L2 selections
+    output$umapL2 <- renderPlot({
+      
+      if (input$l2 %in% tissue_list){
+        FeaturePlot(subset(x = get(input$l1),
+                       subset = tissue == l2()),
+                features = input$GOI) + ggtitle(NULL) + theme(legend.position = "none")
+      }
+      else  if (input$l2 %in% class_list){
+        FeaturePlot(subset(x = get(input$l1),
+                       subset = class == l2()), 
+                features = input$GOI) + ggtitle(NULL) + theme(legend.position = "none")}
+    }, width = 800, height = 600)
+    
+    # output violin where the cells are limited to the L1 and L2 selections
+    output$vlnL2 <- renderPlot({
+      
+      if (input$l2 %in% tissue_list){
+        VlnPlot(subset(x = get(input$l1),
+                         subset = tissue == l2()),
+              features = input$GOI, group.by = "common_name") + 
+          ggtitle(NULL) +
+          theme(legend.position = "none") 
+          }
+      else  if (input$l2 %in% class_list){
+        VlnPlot(subset(x = get(input$l1),
+                           subset = class == l2()), 
+                features = input$GOI, group.by = "common_name" ) +
+          ggtitle(NULL) +
+          theme(legend.position = "none") 
+          }
+        }, width = 800, height = 800)
+    
+    # REPORT --------------------------------------------------------------   
+    # output report
     output$report <- downloadHandler(
         # For PDF output, change this to "report.pdf"
         filename = "report.html",
